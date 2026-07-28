@@ -1,0 +1,45 @@
+# Dependencies
+node_modules/
+.npm
+
+# Build outputs
+dist/
+build/
+apps/backend/dist/
+
+# Environment files - NEVER commit secrets
+.env
+.env.local
+.env.production
+apps/backend/.env
+
+# Expo / React Native
+apps/mobile/.expo/
+apps/mobile/android/
+apps/mobile/ios/
+apps/mobile/node_modules/
+
+# Storage (uploaded media files)
+storage/
+
+# Docker volumes data
+postgres_data/
+redis_data/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE
+.vscode/
+.idea/
+
+# Prisma generated client (will be generated on install)
+apps/backend/node_modules/
+
+# Prometheus data
+prometheus/data/

@@ -1,0 +1,59 @@
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  username  String   @unique
+  password  String
+  
+  // Profile fields
+  displayName String?
+  bio         String?
+  avatarUrl   String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  sessions  Session[]
+  posts     Post[]
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  userAgent    String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Post {
+  id        String   @id @default(uuid())
+  content   String?
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  media     Media[]
+}
+
+model Media {
+  id        String   @id @default(uuid())
+  url       String
+  type      String   // 'image' | 'video'
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
