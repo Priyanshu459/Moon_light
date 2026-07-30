@@ -26,6 +26,26 @@ export class UsersService {
     return user;
   }
 
+  async getProfileById(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        username: true,
+        displayName: true,
+        bio: true,
+        avatarUrl: true,
+        createdAt: true,
+      },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return user;
+  }
+
   async updateProfile(userId: string, updateProfileDto: UpdateProfileDto) {
     return this.prisma.user.update({
       where: { id: userId },

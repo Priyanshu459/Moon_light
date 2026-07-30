@@ -3,7 +3,9 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import FeedScreen from '../screens/main/FeedScreen';
 import CreatePostScreen from '../screens/main/CreatePostScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
-import { Home, PlusSquare, User } from 'lucide-react-native';
+import SearchScreen from '../screens/main/SearchScreen';
+import NotificationsScreen from '../screens/main/NotificationsScreen';
+import { Home, PlusSquare, User, Search, Bell } from 'lucide-react-native';
 import { colors } from '../theme/theme';
 import { View, Text, StyleSheet } from 'react-native';
 
@@ -19,16 +21,17 @@ export default function MainTabs() {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
           borderTopWidth: 1,
-          height: 60,
-          paddingBottom: 8,
-          paddingTop: 6,
+          height: 64,
+          paddingBottom: 10,
+          paddingTop: 8,
         },
         tabBarLabelStyle: {
-          fontSize: 11,
-          fontWeight: '600',
+          fontSize: 10,
+          fontWeight: '700',
+          letterSpacing: 0.3,
         },
         headerStyle: {
-          backgroundColor: colors.surface,
+          backgroundColor: colors.background,
           shadowColor: 'transparent',
           elevation: 0,
           borderBottomWidth: 1,
@@ -52,13 +55,31 @@ export default function MainTabs() {
         }}
       />
       <Tab.Screen
+        name="Search"
+        component={SearchScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Search color={color} size={size} />,
+          title: 'Search',
+          headerShown: false,
+        }}
+      />
+      <Tab.Screen
         name="Create"
         component={CreatePostScreen}
         options={{
           tabBarIcon: ({ color, size }) => <PlusSquare color={color} size={size} />,
           title: 'New Post',
-          tabBarLabel: 'New Post',
+          tabBarLabel: 'Post',
           headerShown: false, // Create screen has its own header
+        }}
+      />
+      <Tab.Screen
+        name="Notifications"
+        component={NotificationsScreen}
+        options={{
+          tabBarIcon: ({ color, size }) => <Bell color={color} size={size} />,
+          title: 'Notifications',
+          headerShown: false,
         }}
       />
       <Tab.Screen

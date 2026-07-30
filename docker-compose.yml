@@ -39,7 +39,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://moonlight:moonlight_password@db:5432/moonlight_db?schema=public
       - REDIS_URL=redis://redis:6379
-      - JWT_SECRET=super_secret_jwt_key_for_moonlight_dev_only
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_change_me}
       - STORAGE_PATH=/storage
     ports:
       - "3000:3000"

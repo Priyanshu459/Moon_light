@@ -15,9 +15,9 @@ export class PostsController {
 
   @UseGuards(JwtAuthGuard)
   @Get('feed')
-  getFeed(@Query('page') page: string, @Query('limit') limit: string) {
+  getFeed(@Request() req: any, @Query('page') page: string, @Query('limit') limit: string) {
     const pageNumber = page ? parseInt(page, 10) : 1;
     const limitNumber = limit ? parseInt(limit, 10) : 10;
-    return this.postsService.getFeed(pageNumber, limitNumber);
+    return this.postsService.getFeed(req.user.sub, pageNumber, limitNumber);
   }
 }

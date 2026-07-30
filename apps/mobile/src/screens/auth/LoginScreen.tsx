@@ -1,5 +1,6 @@
 import React, { useState, useContext } from 'react';
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Alert, Image, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { AuthContext } from '../../context/AuthContext';
 import apiClient from '../../api/client';
 import { colors, typography, layout } from '../../theme/theme';
@@ -35,50 +36,77 @@ export default function LoginScreen({ navigation }: any) {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Moon Light</Text>
-      <Text style={styles.subtitle}>Welcome back</Text>
+    <LinearGradient colors={[colors.background, '#1a1a2e']} style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={{ flex: 1 }}
+      >
+        <ScrollView contentContainerStyle={styles.scrollContainer} keyboardShouldPersistTaps="handled">
+          <View style={styles.logoContainer}>
+            <Image 
+              source={require('../../../assets/images/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </View>
+          
+          <Text style={styles.title}>Moon Light</Text>
+          <Text style={styles.subtitle}>Log in to continue your journey</Text>
 
-      <View style={styles.formContainer}>
-        <TextInput
-          style={styles.input}
-          placeholder="Email or Username"
-          placeholderTextColor={colors.textSecondary}
-          value={emailOrUsername}
-          onChangeText={setEmailOrUsername}
-          autoCapitalize="none"
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Password"
-          placeholderTextColor={colors.textSecondary}
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
+          <View style={styles.formContainer}>
+            <TextInput
+              style={styles.input}
+              placeholder="Username or Email"
+              placeholderTextColor={colors.textSecondary}
+              value={emailOrUsername}
+              onChangeText={setEmailOrUsername}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+            <TextInput
+              style={styles.input}
+              placeholder="Password"
+              placeholderTextColor={colors.textSecondary}
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+            />
 
-        <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
-          {loading ? (
-            <ActivityIndicator color={colors.background} />
-          ) : (
-            <Text style={styles.buttonText}>Log In</Text>
-          )}
-        </TouchableOpacity>
+            <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={loading}>
+              {loading ? (
+                <ActivityIndicator color={colors.background} />
+              ) : (
+                <Text style={styles.buttonText}>Log In</Text>
+              )}
+            </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkButton}>
-          <Text style={styles.linkText}>Don't have an account? Sign up</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
+            <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.linkButton}>
+              <Text style={styles.linkText}>Don't have an account? <Text style={{fontWeight: 'bold'}}>Sign up</Text></Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
     padding: layout.spacing.xl,
+  },
+  logoContainer: {
+    alignItems: 'center',
+    marginBottom: layout.spacing.lg,
+  },
+  logo: {
+    width: 120,
+    height: 120,
+    borderRadius: 30,
   },
   title: {
     ...typography.h1,
@@ -94,10 +122,15 @@ const styles = StyleSheet.create({
   },
   formContainer: {
     width: '100%',
+    backgroundColor: 'rgba(25, 25, 35, 0.6)',
+    padding: layout.spacing.xl,
+    borderRadius: layout.radius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   input: {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
     borderRadius: layout.radius.md,
     padding: layout.spacing.md,
@@ -110,11 +143,17 @@ const styles = StyleSheet.create({
     padding: layout.spacing.md,
     borderRadius: layout.radius.md,
     alignItems: 'center',
-    marginTop: layout.spacing.md,
+    marginTop: layout.spacing.sm,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 5,
   },
   buttonText: {
     ...typography.h3,
     color: colors.background,
+    fontWeight: 'bold',
   },
   linkButton: {
     marginTop: layout.spacing.xl,
@@ -122,6 +161,6 @@ const styles = StyleSheet.create({
   },
   linkText: {
     ...typography.body,
-    color: colors.primary,
+    color: colors.textSecondary,
   },
 });

@@ -7,6 +7,12 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  getMe(@Request() req: any) {
+    return this.usersService.getProfileById(req.user.sub);
+  }
+
   @Get(':username')
   getProfile(@Param('username') username: string) {
     return this.usersService.getProfileByUsername(username);

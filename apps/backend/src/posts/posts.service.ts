@@ -40,7 +40,7 @@ export class PostsService {
     return post;
   }
 
-  async getFeed(page = 1, limit = 10) {
+  async getFeed(userId: string, page = 1, limit = 10) {
     const skip = (page - 1) * limit;
 
     const posts = await this.prisma.post.findMany({
@@ -52,9 +52,20 @@ export class PostsService {
         author: {
           select: { id: true, username: true, displayName: true, avatarUrl: true },
         },
+        _count: {
+          select: { likes: true, comments: true },
+        },
+        likes: {
+          where: { userId },
+          select: { id: true },
+        },
       },
     });
 
-    return posts;
+    return posts.map(post => ({
+      ...post,
+      hasLiked: post.likes.length > 0,
+      likes: undefined, // remove raw likes array from response
+    }));
   }
 }
