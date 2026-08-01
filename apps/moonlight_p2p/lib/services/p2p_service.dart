@@ -67,6 +67,9 @@ class P2PService extends ChangeNotifier {
         } else if (event.startsWith("RELAY_CONNECTED|")) {
           _relayConnected = true;
           notifyListeners();
+        } else if (event.startsWith("ERROR|")) {
+          _error = event.substring(6);
+          notifyListeners();
         } else {
           // It's a JSON message from the network
           try {

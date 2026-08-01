@@ -247,6 +247,7 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
             noise::Config::new,
             yamux::Config::default,
         )?
+        .with_dns()?
         .with_websocket(
             noise::Config::new,
             yamux::Config::default,
@@ -286,12 +287,18 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
     // Dial Bootstrap / Relay Node for Global Discovery
-    // Connect to the Relay Node using WebSocket (WS) via Cloudflare
-    // Note: The libp2p layer uses Noise protocol, so the connection is still fully encrypted end-to-end!
-    let relay_addr: Multiaddr = "/dns4/relay.rooted-feed.online/tcp/80/ws".parse().unwrap();
+    // Use the dedicated AWS Lightsail static IP over raw TCP (No DNS or WebSockets needed)
+    let relay_addr: Multiaddr = "/ip4/3.7.129.92/tcp/4001".parse().unwrap();
     info!("Dialing bootstrap node: {}", relay_addr);
     if let Err(e) = swarm.dial(relay_addr.clone()) {
         log::error!("Failed to dial bootstrap node (non-fatal): {:?}", e);
+        let error_msg = format!("Dial Error: {:?}", e);
+        // Send synchronously to UI via tokio spawn
+        tokio::spawn(async move {
+            if let Some(sink) = &*MSG_SINK.lock().await {
+                let _ = sink.add(format!("ERROR|{}", error_msg));
+            }
+        });
     }
 
     // INIT was already sent earlier so Flutter UI is already unlocked
@@ -325,6 +332,9 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
                     }
                     SwarmEvent::OutgoingConnectionError { error, .. } => {
                         log::error!("OUTGOING CONNECTION ERROR: {error:?}");
+                        if let Some(sink) = &*MSG_SINK.lock().await {
+                            let _ = sink.add(format!("ERROR|Connection failed: {error:?}"));
+                        }
                     }
                     SwarmEvent::Behaviour(MoonlightBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                         for (peer_id, _multiaddr) in list {
