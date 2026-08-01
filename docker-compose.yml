@@ -1,0 +1,96 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: moonlight_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-moonlight}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-moonlight_password}
+      POSTGRES_DB: ${POSTGRES_DB:-moonlight_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - moonlight_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: moonlight_redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - moonlight_network
+
+  backend:
+    build:
+      context: ./apps/backend
+      dockerfile: Dockerfile
+    container_name: moonlight_backend
+    restart: always
+    depends_on:
+      - db
+      - redis
+    environment:
+      - DATABASE_URL=postgresql://moonlight:moonlight_password@db:5432/moonlight_db?schema=public
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=${JWT_SECRET:-super_secret_jwt_key_change_me}
+      - STORAGE_PATH=/storage
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./storage:/storage
+    networks:
+      - moonlight_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: moonlight_nginx
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./storage:/storage:ro
+    depends_on:
+      - backend
+    networks:
+      - moonlight_network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: moonlight_prometheus
+    restart: always
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    networks:
+      - moonlight_network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: moonlight_grafana
+    restart: always
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=moonlight
+    depends_on:
+      - prometheus
+    networks:
+      - moonlight_network
+
+volumes:
+  db_data:
+  redis_data:
+
+networks:
+  moonlight_network:
+    driver: bridge

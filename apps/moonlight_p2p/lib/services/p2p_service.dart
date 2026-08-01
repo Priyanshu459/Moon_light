@@ -8,6 +8,7 @@ import '../src/rust/frb_generated.dart';
 class P2PService extends ChangeNotifier {
   bool _isInitialized = false;
   bool _isStarting = false;
+  bool _relayConnected = false;
   String? _peerId;
   String? _error;
   
@@ -16,6 +17,7 @@ class P2PService extends ChangeNotifier {
 
   bool get isInitialized => _isInitialized;
   bool get isStarting => _isStarting;
+  bool get relayConnected => _relayConnected;
   String? get peerId => _peerId;
   String? get error => _error;
   rust.Profile? get profile => _profile;
@@ -61,6 +63,9 @@ class P2PService extends ChangeNotifier {
         if (event.startsWith("INIT|")) {
           _peerId = event.substring(5);
           _isStarting = false;
+          notifyListeners();
+        } else if (event.startsWith("RELAY_CONNECTED|")) {
+          _relayConnected = true;
           notifyListeners();
         } else {
           // It's a JSON message from the network

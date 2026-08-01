@@ -204,6 +204,10 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
         *PEER_ID.lock().await = Some(peer_id_str.clone());
     }
 
+    // Send INIT immediately so the Flutter UI unlocks right away
+    // The P2P network connection happens in the background after this
+    let _ = msg_sink.add(format!("INIT|{peer_id_str}"));
+
     // Configure GossipSub Peer Scoring to drop bad actors/spammers
     let message_id_fn = |message: &gossipsub::Message| {
         let mut s = DefaultHasher::new();
@@ -234,7 +238,8 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
     };
     gossipsub.with_peer_score(params, thresholds).expect("Valid score params");
 
-    // Setup Swarm with ConnectionLimits to mitigate Eclipse attacks
+    // Setup Swarm — TCP only, no blocking .with_websocket().await? on startup
+    // WebSocket dialing (to relay) still works via TCP transport + WS upgrade on connect
     let mut swarm = libp2p::SwarmBuilder::with_existing_identity(local_key.clone())
         .with_tokio()
         .with_tcp(
@@ -281,15 +286,15 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
     swarm.behaviour_mut().gossipsub.subscribe(&topic)?;
 
     // Dial Bootstrap / Relay Node for Global Discovery
-    // Connect to the Relay Node using Secure WebSocket (WSS) via Cloudflare
-    let relay_addr: Multiaddr = "/dns4/rooted-feed.online/tcp/443/wss".parse().unwrap();
+    // Connect to the Relay Node using WebSocket (WS) via Cloudflare
+    // Note: The libp2p layer uses Noise protocol, so the connection is still fully encrypted end-to-end!
+    let relay_addr: Multiaddr = "/dns4/relay.rooted-feed.online/tcp/80/ws".parse().unwrap();
     info!("Dialing bootstrap node: {}", relay_addr);
     if let Err(e) = swarm.dial(relay_addr.clone()) {
         log::error!("Failed to dial bootstrap node (non-fatal): {:?}", e);
     }
 
-    let _ = msg_sink.add(format!("INIT|{peer_id_str}"));
-
+    // INIT was already sent earlier so Flutter UI is already unlocked
     let (tx, mut rx) = tokio::sync::mpsc::channel::<String>(100);
     *COMMAND_SENDER.lock().await = Some(tx);
 
@@ -308,6 +313,19 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
                     SwarmEvent::NewListenAddr { address, .. } => {
                         info!("Listening on {address:?}");
                     }
+                    SwarmEvent::ConnectionEstablished { peer_id, .. } => {
+                        info!("Connection established with: {peer_id}");
+                        // Always add any connected peer as explicit GossipSub peer
+                        // so the mesh forms immediately and messages propagate
+                        swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+                    }
+                    SwarmEvent::ConnectionClosed { peer_id, .. } => {
+                        info!("Connection closed with: {peer_id}");
+                        swarm.behaviour_mut().gossipsub.remove_explicit_peer(&peer_id);
+                    }
+                    SwarmEvent::OutgoingConnectionError { error, .. } => {
+                        log::error!("OUTGOING CONNECTION ERROR: {error:?}");
+                    }
                     SwarmEvent::Behaviour(MoonlightBehaviourEvent::Mdns(mdns::Event::Discovered(list))) => {
                         for (peer_id, _multiaddr) in list {
                             info!("mDNS discovered a new peer: {peer_id}");
@@ -321,16 +339,23 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
                         }
                     }
                     SwarmEvent::Behaviour(MoonlightBehaviourEvent::Identify(identify::Event::Received { peer_id, info, .. })) => {
-                        // Check if the peer supports relay
+                        // Check if the peer is the relay
                         if info.protocols.contains(&libp2p::StreamProtocol::new("/libp2p/circuit/relay/0.2.0/hop")) {
                             info!("Found relay node: {}", peer_id);
-                            
-                            // Listen on the relay circuit
-                            let relay_addr = "/dns4/relay.rooted-feed.online/tcp/443/wss".parse::<Multiaddr>().unwrap();
+
+                            // Add relay as explicit GossipSub peer so messages flow through it
+                            swarm.behaviour_mut().gossipsub.add_explicit_peer(&peer_id);
+
+                            // Tell Flutter we are connected to the relay
+                            if let Some(sink) = &*MSG_SINK.lock().await {
+                                let _ = sink.add(format!("RELAY_CONNECTED|{peer_id}"));
+                            }
+
+                            // Listen on the relay circuit so we are reachable by others
+                            let relay_addr = "/dns4/relay.rooted-feed.online/tcp/80/ws".parse::<Multiaddr>().unwrap();
                             let circuit_addr = relay_addr
                                 .with(libp2p::multiaddr::Protocol::P2p(peer_id))
                                 .with(libp2p::multiaddr::Protocol::P2pCircuit);
-                            
                             info!("Listening on relay circuit: {}", circuit_addr);
                             if let Err(e) = swarm.listen_on(circuit_addr) {
                                 info!("Failed to listen on relay circuit: {:?}", e);
@@ -359,7 +384,9 @@ pub async fn start_node(msg_sink: crate::frb_generated::StreamSink<String>) -> a
                             }
                         }
                     }
-                    _ => {}
+                    e => {
+                        log::debug!("Unhandled SwarmEvent: {:?}", e);
+                    }
                 }
             }
         }
