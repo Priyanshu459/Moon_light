@@ -111,8 +111,8 @@ async fn main() -> Result<(), Box<dyn Error>> {
     let topic = gossipsub::IdentTopic::new("moonlight-global-feed");
     let _ = swarm.behaviour_mut().gossipsub.subscribe(&topic);
 
-    // Listen on WebSocket
-    swarm.listen_on("/ip4/0.0.0.0/tcp/4001/ws".parse()?)?;
+    // Listen on raw TCP (We dropped Cloudflare, so we don't need WebSockets anymore!)
+    swarm.listen_on("/ip4/0.0.0.0/tcp/4001".parse()?)?;
 
     loop {
         match swarm.select_next_some().await {
